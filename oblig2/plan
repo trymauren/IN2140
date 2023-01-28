@@ -1,0 +1,100 @@
+1) load_inodes
+2) create_dir
+3) create_file
+4) find_inode_by_name
+5) fs_shutdown
+
+
+Valgrind - sjekk:
+
+
+valgrind
+--track-origins=yes \
+--malloc-fill=0x40 \
+--free-fill=0x23 \
+--leak-check=full \
+--show-leak-kinds=all \
+DITT_PROGRAM
+
+
+gcc allocation.c inode.c create_example1/create_fs.c
+-> inode.h
+
+
+struct inode* create_file_custom( struct inode* parent, int id, char* name, char readonly, int size_in_bytes){
+  //lager ny mappe og legger den i parents entries
+  if(!parent->is_directory || parent == NULL){
+    return NULL;
+  }
+
+  struct inode* ret = find_inode_by_name(parent,name);
+  if(!ret){
+    struct inode* nyNode;
+    nyNode = malloc(sizeof(struct inode));
+    if(nyNode == NULL){
+      fprintf(stderr, "malloc failed");
+      exit(EXIT_FAILURE);
+    }
+
+    nyNode->id = id;
+    nyNode->name = strdup(name);
+    free(name);
+    nyNode->is_directory = 0;
+    nyNode->is_readonly = readonly;
+    nyNode->filesize = size_in_bytes;
+
+    parent->entries = realloc(parent->entries,(parent->num_entries + 1)*sizeof(size_t));
+    parent->entries[parent->num_entries] = nyNode;
+    parent->num_entries += 1;
+    return nyNode;
+  }
+
+  return NULL;
+}
+
+// opprett fil og legg denne til i forelder- noden. denne funksjonen malloc- er for struct og navn, men ikke for entries
+struct inode* create_dir_custom(struct inode* parent, int id, char* name ){
+
+  //denne delen lager root hvis ikke denne finnes
+  if(parent == NULL){
+    struct inode* nyNode;
+    nyNode = malloc(sizeof(struct inode));
+    if(nyNode == NULL){
+      fprintf(stderr, "malloc failed");
+      exit(EXIT_FAILURE);
+    }
+    nyNode->id = id;
+    nyNode->name = strdup(name);
+    free(name);
+    nyNode->is_directory = 1;
+    nyNode->is_readonly = 0;
+    nyNode->filesize = 0;
+    return nyNode;
+  }
+  struct inode* ret = find_inode_by_name(parent,name);
+
+  //lager ny mappe og legger den i parents entries
+  if(!ret){
+
+    struct inode* nyNode;
+    nyNode = malloc(sizeof(struct inode));
+    if(nyNode == NULL){
+      fprintf(stderr, "malloc failed");
+      exit(EXIT_FAILURE);
+    }
+
+    nyNode->id = id;
+    nyNode->name = strdup(name);
+    nyNode->is_directory = 1;
+    nyNode->is_readonly = 0;
+    nyNode->filesize = 0;
+
+    parent->entries = realloc(parent->entries,(parent->num_entries + 1)*sizeof(size_t));
+    parent->entries[parent->num_entries] = nyNode;
+    parent->num_entries += 1;
+
+    return nyNode;
+  }
+  //free(ret);
+  return NULL;
+}
